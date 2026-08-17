@@ -3,7 +3,13 @@ name = "agentic-rag-assistant"
 version = "0.1.0"
 description = "Agentic RAG research/support assistant: LangGraph agent loop, hybrid retrieval over pgvector, RAGAS eval, read-only integration with order-fulfillment-platform"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "alembic>=1.19.1",
+    "pgvector>=0.5.0",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy>=2.0.52",
+]
 
 [dependency-groups]
 dev = [
