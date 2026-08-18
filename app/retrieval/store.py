@@ -49,9 +49,19 @@ class Document(Base):
 
 class Chunk(Base):
     """Mirrors the `chunks` table. `content_tsv` is intentionally not mapped
-    here - it's a DB-generated column (STORED, computed from `content`), so
-    keyword search reads it via raw SQL in search queries below rather than
-    through the ORM."""
+    here - it's a DB-generated column (STORED, computed from `title` and
+    `content`), so keyword search reads it via raw SQL in search queries
+    below rather than through the ORM.
+
+    `title` is denormalized from `documents.title` (migration a53d815bd906)
+    specifically so content_tsv can include it - chunking.py drops each
+    doc's H1 title line from `content` (see chunking.py's docstring), so
+    without this, a query sharing vocabulary only with a doc's title (e.g.
+    "policy" for return-policy.md, whose body never says that word) could
+    never match via keyword search. Postgres generated columns can only
+    reference columns in their own row, hence duplicating it here rather
+    than joining to `documents` in the generated expression.
+    """
 
     __tablename__ = "chunks"
 
@@ -62,6 +72,7 @@ class Chunk(Base):
         UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
     )
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -191,6 +202,7 @@ async def replace_document(
             Chunk(
                 document_id=document.id,
                 chunk_index=chunk_index,
+                title=title,
                 content=content,
                 embedding=embedding,
             )
