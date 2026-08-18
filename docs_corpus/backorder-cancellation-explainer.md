@@ -1,3 +1,9 @@
+---
+doc_type: explainer
+category: cancellation
+title: Why Orders Get Cancelled
+---
+
 # Why was my order cancelled?
 
 ## The most common reason: insufficient stock

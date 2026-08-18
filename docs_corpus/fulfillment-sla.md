@@ -1,3 +1,9 @@
+---
+doc_type: policy
+category: sla
+title: Fulfillment SLA
+---
+
 # Fulfillment SLA
 
 ## How long does confirmation take?

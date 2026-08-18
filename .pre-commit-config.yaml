@@ -5,8 +5,17 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+  - repo: local
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic>=2]
+        name: mypy
+        # Local (uv run), not mirrors-mypy's isolated env: that hook only
+        # sees whatever's listed in additional_dependencies, a second
+        # dependency list that would need to be kept in sync by hand as
+        # real deps (pydantic-settings, LangGraph, FastAPI, ...) are added
+        # over the rest of this build. Running inside our own uv venv means
+        # mypy always sees exactly what's actually installed.
+        entry: uv run mypy
+        language: system
+        types: [python]
+        pass_filenames: true

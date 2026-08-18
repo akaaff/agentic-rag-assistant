@@ -1,3 +1,9 @@
+---
+doc_type: policy
+category: cancellation
+title: Cancellation Policy
+---
+
 # Cancellation policy
 
 ## Can I cancel my own order?

@@ -1,3 +1,9 @@
+---
+doc_type: faq
+category: general
+title: Frequently Asked Questions
+---
+
 # Frequently asked questions
 
 ## What do the order statuses mean?

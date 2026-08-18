@@ -1,3 +1,9 @@
+---
+doc_type: policy
+category: returns
+title: Return Policy
+---
+
 # Return policy
 
 ## Standard returns
