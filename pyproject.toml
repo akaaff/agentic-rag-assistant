@@ -38,6 +38,7 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "integration: requires a live order-fulfillment-platform gateway (skipped by default)",
 ]
