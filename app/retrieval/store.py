@@ -91,24 +91,40 @@ def _embedding_literal(embedding: Sequence[float]) -> str:
 
 
 async def vector_search(
-    session: AsyncSession, query_embedding: Sequence[float], top_k: int = 10
+    session: AsyncSession,
+    query_embedding: Sequence[float],
+    top_k: int = 10,
+    doc_type: str | None = None,
+    category: str | None = None,
 ) -> list[SearchResult]:
     query = text("""
         SELECT c.id, c.content, c.chunk_index, d.doc_type, d.category, d.title, d.source_file,
                1 - (c.embedding <=> (:query_embedding)::vector) AS score
         FROM chunks c
         JOIN documents d ON d.id = c.document_id
+        WHERE (CAST(:doc_type AS text) IS NULL OR d.doc_type = CAST(:doc_type AS text))
+          AND (CAST(:category AS text) IS NULL OR d.category = CAST(:category AS text))
         ORDER BY c.embedding <=> (:query_embedding)::vector
         LIMIT :top_k
     """)
     result = await session.execute(
-        query, {"query_embedding": _embedding_literal(query_embedding), "top_k": top_k}
+        query,
+        {
+            "query_embedding": _embedding_literal(query_embedding),
+            "top_k": top_k,
+            "doc_type": doc_type,
+            "category": category,
+        },
     )
     return [_row_to_result(row) for row in result]
 
 
 async def keyword_search(
-    session: AsyncSession, query_text: str, top_k: int = 10
+    session: AsyncSession,
+    query_text: str,
+    top_k: int = 10,
+    doc_type: str | None = None,
+    category: str | None = None,
 ) -> list[SearchResult]:
     query = text("""
         SELECT c.id, c.content, c.chunk_index, d.doc_type, d.category, d.title, d.source_file,
@@ -116,10 +132,20 @@ async def keyword_search(
         FROM chunks c
         JOIN documents d ON d.id = c.document_id
         WHERE c.content_tsv @@ plainto_tsquery('english', :query_text)
+          AND (CAST(:doc_type AS text) IS NULL OR d.doc_type = CAST(:doc_type AS text))
+          AND (CAST(:category AS text) IS NULL OR d.category = CAST(:category AS text))
         ORDER BY score DESC
         LIMIT :top_k
     """)
-    result = await session.execute(query, {"query_text": query_text, "top_k": top_k})
+    result = await session.execute(
+        query,
+        {
+            "query_text": query_text,
+            "top_k": top_k,
+            "doc_type": doc_type,
+            "category": category,
+        },
+    )
     return [_row_to_result(row) for row in result]
 
 

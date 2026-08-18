@@ -38,10 +38,21 @@ async def hybrid_search(
     query_embedding: Sequence[float],
     top_k: int = 10,
     candidate_k: int = DEFAULT_CANDIDATE_K,
+    doc_type: str | None = None,
+    category: str | None = None,
 ) -> list[SearchResult]:
     """Vector + keyword search, each over-fetching candidate_k, fused by RRF,
-    then truncated to top_k. Reranking (Day 3) operates on this fused list."""
-    vector_results = await vector_search(session, query_embedding, top_k=candidate_k)
-    keyword_results = await keyword_search(session, query_text, top_k=candidate_k)
+    then truncated to top_k. doc_type/category filter both underlying
+    queries before fusion, not the fused result after - filtering first
+    means candidate_k results are actually available to fuse from within
+    the filtered subset, rather than fusing globally and then discarding
+    results down to a possibly-tiny filtered remainder.
+    rerank() operates on this fused list as a further reordering pass."""
+    vector_results = await vector_search(
+        session, query_embedding, top_k=candidate_k, doc_type=doc_type, category=category
+    )
+    keyword_results = await keyword_search(
+        session, query_text, top_k=candidate_k, doc_type=doc_type, category=category
+    )
     fused = reciprocal_rank_fusion([vector_results, keyword_results])
     return fused[:top_k]

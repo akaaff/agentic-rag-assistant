@@ -10,6 +10,7 @@ dependencies = [
     "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",
+    "sentence-transformers>=5.7.0",
     "sqlalchemy>=2.0.52",
 ]
 
