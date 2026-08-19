@@ -1,12 +1,28 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
   - repo: local
     hooks:
+      - id: ruff-check
+        name: ruff check
+        # Local (uv run), not astral-sh/ruff-pre-commit's pinned isolated
+        # env - that hook was pinned to v0.8.4 while this project's own
+        # ruff dependency (ruff>=0.8 in pyproject.toml) resolved to 0.16.3,
+        # and the two versions disagreed on a real formatting choice
+        # (whether to join two adjacent string literals onto one line).
+        # Local commits silently passed against the older pinned version
+        # while CI's `uv run ruff format --check .` - correctly using this
+        # project's actual dependency - failed on the same code. Same root
+        # cause and same fix as mypy's hook below: one version of the tool
+        # (whatever uv actually installs), not two.
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+        pass_filenames: true
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+        pass_filenames: true
       - id: mypy
         name: mypy
         # Local (uv run), not mirrors-mypy's isolated env: that hook only

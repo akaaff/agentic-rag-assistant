@@ -53,8 +53,7 @@ def upgrade() -> None:
     # good list centroids, which doesn't exist yet for a corpus this size
     # anyway - HNSW builds incrementally and has no such cold-start problem.
     op.execute(
-        "CREATE INDEX chunks_embedding_hnsw_idx ON chunks "
-        "USING hnsw (embedding vector_cosine_ops)"
+        "CREATE INDEX chunks_embedding_hnsw_idx ON chunks USING hnsw (embedding vector_cosine_ops)"
     )
     op.execute("CREATE INDEX chunks_content_tsv_idx ON chunks USING gin (content_tsv)")
     op.execute("CREATE INDEX chunks_document_id_idx ON chunks (document_id)")
