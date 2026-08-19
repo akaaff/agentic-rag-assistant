@@ -5,6 +5,7 @@ from app.agent.state import MAX_TOOL_CALLS, GraphState
 def _base_state(**overrides: object) -> GraphState:
     state: GraphState = {
         "messages": [],
+        "is_out_of_scope_action": False,
         "customer_jwt": "fake-jwt",
         "needs_retrieval": False,
         "needs_tools": False,

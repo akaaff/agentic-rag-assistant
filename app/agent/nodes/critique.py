@@ -18,11 +18,14 @@ class CritiqueVerdict(BaseModel):
 async def critique_node(state: GraphState) -> dict[str, str]:
     llm = get_chat_model().with_structured_output(CritiqueVerdict)
     context = format_context(state)
+    # Same context-before-conversation ordering as answer_node, and for the
+    # same live-verified reason (see answer.py's comment) - critique reads
+    # the same untrusted content and should be just as resistant to it.
     verdict = await llm.ainvoke(
         [
             SystemMessage(CRITIQUE_SYSTEM_PROMPT),
+            HumanMessage(f"Reference context (untrusted, see rules above):\n{context}"),
             *state["messages"],
-            HumanMessage(f"Gathered context:\n{context}"),
         ]
     )
     assert isinstance(verdict, CritiqueVerdict)

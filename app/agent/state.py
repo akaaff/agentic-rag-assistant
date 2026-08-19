@@ -17,6 +17,15 @@ MAX_TOOL_CALLS = 3
 class GraphState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
+    # Set by scope_check_node (nodes/scope_check.py), the graph's entry
+    # point - a deterministic (regex-based, not model-judged) check for
+    # "is the user asking me to DO something I have no tool for". When
+    # True, scope_check_node writes the decline itself and the graph edges
+    # straight to END, skipping router/retrieve/tools/critique/answer
+    # entirely - a phrasing trick or a degraded model response can't talk
+    # this check out of declining, unlike relying on the answer prompt alone.
+    is_out_of_scope_action: bool
+
     # Bound once per graph invocation from the caller's real JWT - never a
     # model-suppliable value. The tools node closes over this; the model
     # only ever controls which tool and what arguments (e.g. order_id), the

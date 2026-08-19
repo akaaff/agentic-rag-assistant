@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from langchain_core.messages import HumanMessage
-
+from app.agent.context import last_user_text
 from app.agent.state import GraphState
 from app.retrieval.embeddings import OllamaEmbeddingsClient
 from app.retrieval.hybrid import hybrid_search
@@ -12,16 +11,8 @@ TOP_K = 5
 CANDIDATE_K = 15
 
 
-def _last_user_text(state: GraphState) -> str:
-    for message in reversed(state["messages"]):
-        if isinstance(message, HumanMessage):
-            content = message.content
-            return content if isinstance(content, str) else str(content)
-    raise ValueError("No user message found in state")
-
-
 async def retrieve_node(state: GraphState) -> dict[str, list[SearchResult]]:
-    query = _last_user_text(state)
+    query = last_user_text(state)
     embeddings_client = OllamaEmbeddingsClient()
     [embedding] = await embeddings_client.embed([query])
 

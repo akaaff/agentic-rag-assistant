@@ -8,8 +8,13 @@ from app.agent.nodes.answer import answer_node
 from app.agent.nodes.critique import critique_node
 from app.agent.nodes.retrieve import retrieve_node
 from app.agent.nodes.router import router_node
+from app.agent.nodes.scope_check import scope_check_node
 from app.agent.nodes.tools import tools_node
 from app.agent.state import MAX_TOOL_CALLS, GraphState
+
+
+def _after_scope_check(state: GraphState) -> str:
+    return END if state["is_out_of_scope_action"] else "router"
 
 
 def _after_router(state: GraphState) -> str:
@@ -51,6 +56,7 @@ def build_graph() -> StateGraph:  # type: ignore[type-arg]
     # generics in this module.
     graph = StateGraph(GraphState)
 
+    graph.add_node("scope_check", scope_check_node)
     graph.add_node("router", router_node)
     graph.add_node("retrieve", retrieve_node)
     graph.add_node("tools", tools_node)
@@ -58,7 +64,8 @@ def build_graph() -> StateGraph:  # type: ignore[type-arg]
     graph.add_node("mark_retry", _mark_retry)
     graph.add_node("answer", answer_node)
 
-    graph.add_edge(START, "router")
+    graph.add_edge(START, "scope_check")
+    graph.add_conditional_edges("scope_check", _after_scope_check, ["router", END])
     graph.add_conditional_edges("router", _after_router, ["retrieve", "tools", "critique"])
     graph.add_conditional_edges("retrieve", _after_retrieve, ["tools", "critique"])
     graph.add_conditional_edges("tools", _after_tools, ["tools", "critique"])
@@ -75,7 +82,8 @@ def compile_graph(
     """Compiled, ready-to-invoke graph. Caller (Day 7's FastAPI app, or a
     test) is responsible for supplying the full initial state on first
     invocation - GraphState is a TypedDict with no defaults:
-    {messages, customer_jwt, needs_retrieval: False, needs_tools: False,
-    retrieved_docs: [], tool_call_count: 0, needs_more_tools: False,
-    critique_verdict: None, retried: False}."""
+    {messages, customer_jwt, is_out_of_scope_action: False,
+    needs_retrieval: False, needs_tools: False, retrieved_docs: [],
+    tool_call_count: 0, needs_more_tools: False, critique_verdict: None,
+    retried: False}."""
     return build_graph().compile(checkpointer=checkpointer)

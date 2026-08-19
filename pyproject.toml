@@ -51,8 +51,9 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "integration: requires a live order-fulfillment-platform gateway (skipped by default)",
+    "llm: requires a live Ollama instance, no gateway needed (skipped by default)",
 ]
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not llm'"
 
 [tool.uv]
 package = false
