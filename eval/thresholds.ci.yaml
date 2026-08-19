@@ -1,0 +1,21 @@
+# Relaxed thresholds for CI's fast eval job, which uses a much smaller,
+# CPU-feasible judge model (see .github/workflows/ci.yml) than local dev's
+# qwen2.5:7b-instruct - a small model is a noticeably noisier judge, and
+# this is that trade-off made explicit rather than hidden behind one
+# threshold set that doesn't actually fit both cases.
+#
+# Honest caveat: unlike eval/thresholds.yaml (calibrated from real runs
+# against qwen2.5:7b-instruct, see its own comments and DECISIONS.md),
+# these values have NOT been empirically calibrated against the actual CI
+# judge model - that would need running that exact small model locally
+# first, which wasn't done here. They're set conservatively low as a
+# starting point specifically so this job catches only severe regressions
+# (e.g. the graph crashing, retrieval returning nothing) rather than
+# fine-grained quality drift, and should be tightened once real CI runs
+# provide actual numbers to calibrate against - same "measure, don't
+# guess" standard as the rest of this repo's eval work, just not yet
+# possible to apply here without a CI run actually happening.
+faithfulness: 0.3
+answer_relevancy: 0.3
+context_precision: 0.2
+context_recall: 0.2
