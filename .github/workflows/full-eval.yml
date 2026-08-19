@@ -1,0 +1,64 @@
+name: Full Eval (manual)
+
+# Not run automatically - qwen2.5:7b-instruct (4.7GB) is a much heavier
+# pull/run than fast-eval's qwen2.5:0.5b-instruct, and this is meant as a
+# pre-merge confidence check against the real thresholds local dev uses
+# (eval/thresholds.yaml), not a gate on every push. Trigger manually from
+# the Actions tab (workflow_dispatch) before merging something that
+# touches retrieval, prompts, or the graph itself.
+on:
+  workflow_dispatch: {}
+
+env:
+  DATABASE_URL: postgresql+psycopg://assistant:assistant@localhost:5432/agentic_rag_assistant
+  REDIS_URL: redis://localhost:6379/0
+  OLLAMA_BASE_URL: http://localhost:11434
+  OLLAMA_CHAT_MODEL: qwen2.5:7b-instruct
+  OLLAMA_EMBED_MODEL: nomic-embed-text
+  ORDER_PLATFORM_GATEWAY_URL: http://localhost:8080
+  EVAL_JUDGE_MODEL: qwen2.5:7b-instruct
+  EVAL_THRESHOLDS_PATH: eval/thresholds.yaml
+
+jobs:
+  full-eval:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.0-pg16
+        env:
+          POSTGRES_USER: assistant
+          POSTGRES_PASSWORD: assistant
+          POSTGRES_DB: agentic_rag_assistant
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U assistant"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.13
+      - run: uv sync --frozen
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+      - name: Start Ollama
+        run: |
+          ollama serve &
+          for i in $(seq 1 30); do curl -sf http://localhost:11434/api/tags >/dev/null && break; sleep 1; done
+      - name: Pull models
+        run: |
+          ollama pull qwen2.5:7b-instruct
+          ollama pull nomic-embed-text
+
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+      - name: Ingest docs corpus
+        run: uv run python -m scripts.ingest
+      - name: Run eval
+        run: uv run python -m scripts.run_eval

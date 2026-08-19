@@ -15,6 +15,19 @@
 # provide actual numbers to calibrate against - same "measure, don't
 # guess" standard as the rest of this repo's eval work, just not yet
 # possible to apply here without a CI run actually happening.
+#
+# One thing that WAS checked directly (not assumed): qwen2.5:0.5b-instruct
+# is also OLLAMA_CHAT_MODEL for this job, i.e. the model the graph itself
+# runs on in CI, not just the RAGAS judge. A quick live check against
+# Ollama's raw /api/chat showed it does NOT reliably call tools even when
+# the order ID is spelled out right in the question - it responded with
+# plain text asking for the order ID again instead of emitting a tool
+# call. So live_data/fusion golden cases in CI likely proceed through
+# tools_node without an actual tool call firing, unlike the same cases
+# run locally against qwen2.5:7b-instruct. This is a real, structural
+# difference in CI's behavior, not just noisier scores - part of why
+# these thresholds stay low rather than being tuned as if CI exercises
+# the same code paths as local dev.
 faithfulness: 0.3
 answer_relevancy: 0.3
 context_precision: 0.2

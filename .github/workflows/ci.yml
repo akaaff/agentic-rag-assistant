@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+env:
+  DATABASE_URL: postgresql+psycopg://assistant:assistant@localhost:5432/agentic_rag_assistant
+  REDIS_URL: redis://localhost:6379/0
+  OLLAMA_BASE_URL: http://localhost:11434
+  OLLAMA_EMBED_MODEL: nomic-embed-text
+  ORDER_PLATFORM_GATEWAY_URL: http://localhost:8080
+
+jobs:
+  lint-and-test:
+    # No live deps needed - the default pytest run excludes both
+    # `integration` (needs order-fulfillment-platform's gateway) and `llm`
+    # (needs Ollama) marked tests, see pyproject.toml's addopts.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.13
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy .
+      - run: uv run pytest -q
+
+  fast-eval:
+    # Fast, every-push gate: a small CPU-feasible model, deliberately
+    # relaxed thresholds (eval/thresholds.ci.yaml - see its own comments
+    # for why these aren't calibrated as tightly as local dev's). This
+    # exists to catch severe regressions (a broken node, retrieval
+    # returning nothing, a crash) on every push, not to be a precise
+    # quality gate - that's what the manually-triggered full-eval workflow
+    # (.github/workflows/full-eval.yml) is for, using the same
+    # qwen2.5:7b-instruct model and real thresholds local dev uses.
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.0-pg16
+        env:
+          POSTGRES_USER: assistant
+          POSTGRES_PASSWORD: assistant
+          POSTGRES_DB: agentic_rag_assistant
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U assistant"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      OLLAMA_CHAT_MODEL: qwen2.5:0.5b-instruct
+      EVAL_JUDGE_MODEL: qwen2.5:0.5b-instruct
+      EVAL_THRESHOLDS_PATH: eval/thresholds.ci.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.13
+      - run: uv sync --frozen
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+      - name: Start Ollama
+        run: |
+          ollama serve &
+          for i in $(seq 1 30); do curl -sf http://localhost:11434/api/tags >/dev/null && break; sleep 1; done
+      - name: Pull models
+        run: |
+          ollama pull qwen2.5:0.5b-instruct
+          ollama pull nomic-embed-text
+
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+      - name: Ingest docs corpus
+        run: uv run python -m scripts.ingest
+      - name: Run eval
+        run: uv run python -m scripts.run_eval
