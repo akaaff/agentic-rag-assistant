@@ -5,9 +5,11 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import asdict, is_dataclass
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import BaseMessage, HumanMessage
 from pydantic import BaseModel
 from redis.asyncio import Redis
@@ -146,6 +148,21 @@ async def chat(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Mounted AFTER every API route above - Starlette matches routes in
+# registration order, so a "/" static mount registered first would shadow
+# /health and /chat entirely. /docs_corpus is served read-only, straight
+# from the same markdown files web-client's help-center panel renders
+# client-side; "/" serves the demo UI itself (index.html/app.js/style.css).
+# Unlike the sibling repo's web-client (its own `python -m http.server`
+# process, since its backend is Java/Spring with no equivalent built-in),
+# this app can just mount its own static directories directly - one
+# process for the whole demo instead of two.
+app.mount("/docs_corpus", StaticFiles(directory=_REPO_ROOT / "docs_corpus"), name="docs_corpus")
+app.mount("/", StaticFiles(directory=_REPO_ROOT / "web-client", html=True), name="web-client")
 
 
 if __name__ == "__main__":

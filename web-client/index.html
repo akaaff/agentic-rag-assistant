@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic Support Assistant (demo)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <section id="login-panel">
+    <h1>Agentic Support Assistant</h1>
+    <p class="subtitle">Demo login - picks one of order-fulfillment-platform's 5 seeded demo customers.</p>
+    <label for="customer-select">Customer</label>
+    <select id="customer-select">
+      <option value="cust-001">cust-001</option>
+      <option value="cust-002">cust-002</option>
+      <option value="cust-003">cust-003</option>
+      <option value="cust-004">cust-004</option>
+      <option value="cust-005">cust-005</option>
+    </select>
+    <button id="login-btn">Log in</button>
+    <p id="login-status" class="status"></p>
+  </section>
+
+  <section id="app" hidden>
+    <header id="session-bar">
+      <span>Logged in as <strong id="current-customer"></strong></span>
+      <button id="logout-btn">Log out</button>
+    </header>
+
+    <main id="main-layout">
+      <div id="chat-column" class="column">
+        <h2>Chat</h2>
+        <div id="chat-log" aria-live="polite"></div>
+        <form id="chat-form">
+          <input id="chat-input" type="text" placeholder="Ask a question..." autocomplete="off" required>
+          <button type="submit">Send</button>
+        </form>
+      </div>
+
+      <div id="trace-column" class="column">
+        <h2>Reasoning trace</h2>
+        <p class="hint">What the graph actually did for the last question - retrieved docs, tool calls, critique verdict.</p>
+        <div id="trace-log"></div>
+      </div>
+
+      <div id="help-column" class="column">
+        <h2>Help center</h2>
+        <div id="doc-list"></div>
+        <div id="doc-viewer"></div>
+      </div>
+    </main>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
