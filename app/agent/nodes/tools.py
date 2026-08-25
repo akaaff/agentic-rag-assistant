@@ -38,10 +38,29 @@ def build_tools(customer_jwt: str) -> list[BaseTool]:
         )
 
     @tool
-    async def search_my_orders(status: OrderStatus | None = None) -> str:
+    async def search_my_orders(status: str | None = None) -> str:
         """Search the caller's own orders, optionally filtered by status
         (PENDING, CONFIRMED, or CANCELLED). Leave blank to list all."""
-        results = await gateway.search_orders(customer_jwt, status=status)
+        # status is typed str, not OrderStatus, deliberately: verified live
+        # that qwen2.5:7b-instruct sometimes calls this with status="" (an
+        # empty string, meaning "no filter") rather than omitting the
+        # argument entirely. An OrderStatus-typed parameter rejects that at
+        # LangChain's schema-validation layer *before* this function body
+        # ever runs, crashing the whole tools_node with an unhandled
+        # pydantic ValidationError mid-request - so the coercion has to
+        # happen here, not in the type annotation. A genuinely-invalid
+        # value (neither empty nor a real status) gets a message the model
+        # can react to instead of a crash.
+        status_enum: OrderStatus | None = None
+        if status:
+            try:
+                status_enum = OrderStatus(status)
+            except ValueError:
+                return (
+                    f"'{status}' isn't a valid status - use PENDING, CONFIRMED, or CANCELLED, "
+                    "or leave it blank to list all orders."
+                )
+        results = await gateway.search_orders(customer_jwt, status=status_enum)
         if not results:
             return "No matching orders found."
         lines = [f"- {r.order_id}: {r.status.value}" for r in results]
