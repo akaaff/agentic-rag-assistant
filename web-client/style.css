@@ -193,6 +193,7 @@ body {
   text-align: left;
   cursor: pointer;
   background: var(--bg);
+  color: var(--text);
 }
 
 .doc-list-item:hover {
