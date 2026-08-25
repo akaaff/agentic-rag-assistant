@@ -238,6 +238,8 @@ function handleSseEvent(rawEvent) {
     appendChatMessage("assistant", data.answer);
   } else if (eventName === "answer") {
     appendChatMessage("assistant", data.answer);
+  } else if (eventName === "error") {
+    appendChatMessage("error", data.message);
   }
   // "done" carries no payload worth rendering.
 }

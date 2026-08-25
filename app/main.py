@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -26,6 +27,9 @@ from app.retrieval.embeddings import OllamaEmbeddingsClient
 class ChatRequest(BaseModel):
     question: str
     thread_id: str
+
+
+logger = logging.getLogger(__name__)
 
 
 def _sse(event: str, data: dict[str, object]) -> str:
@@ -133,9 +137,26 @@ async def chat(
             "retried": False,
         }
 
-        async for update in graph.astream(initial_state, config=config, stream_mode="updates"):
-            for node_name, node_output in update.items():
-                yield _sse("node_update", {"node": node_name, "output": _serialize(node_output)})
+        # A node raising (e.g. a tool call the model made with a bad
+        # argument) used to propagate straight out of this generator with
+        # no SSE event at all - verified live that this leaves the browser
+        # hanging indefinitely with no error shown, since the connection
+        # just closes without a clean final chunk. Catching it here and
+        # yielding an actual "error" event (handled in web-client/app.js)
+        # is what turns that into a visible failure instead of a silent one.
+        try:
+            async for update in graph.astream(initial_state, config=config, stream_mode="updates"):
+                for node_name, node_output in update.items():
+                    yield _sse(
+                        "node_update", {"node": node_name, "output": _serialize(node_output)}
+                    )
+        except Exception:
+            logger.exception("Graph execution failed for thread_id=%s", body.thread_id)
+            yield _sse(
+                "error", {"message": "Something went wrong answering that - please try again."}
+            )
+            yield _sse("done", {})
+            return
 
         final_state = await graph.aget_state(config)
         final_answer = str(final_state.values["messages"][-1].content)
