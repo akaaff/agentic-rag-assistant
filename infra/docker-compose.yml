@@ -28,5 +28,41 @@ services:
       timeout: 3s
       retries: 10
 
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Container-network URLs, deliberately NOT the same values .env uses
+      # for local `python -m app.main` dev runs (which sees Postgres/Redis
+      # via their host-mapped ports, e.g. localhost:5434) - inside the
+      # compose network, other containers are reached by service name on
+      # their internal port instead.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-assistant}:${POSTGRES_PASSWORD:-assistant}@postgres:5432/${POSTGRES_DB:-agentic_rag_assistant}
+      REDIS_URL: redis://redis:6379/0
+      # Ollama and order-fulfillment-platform's gateway both run on the
+      # host (Ollama isn't containerized at all; the sibling repo has its
+      # own separate stack) - host.docker.internal is Docker's DNS name
+      # for reaching the host machine from inside a container, on both
+      # Docker Desktop (Windows/Mac, works out of the box) and Linux (only
+      # with the extra_hosts entry below, which Docker Desktop ignores
+      # harmlessly since it already resolves this name natively).
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-qwen2.5:7b-instruct}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      ORDER_PLATFORM_GATEWAY_URL: ${ORDER_PLATFORM_GATEWAY_URL:-http://host.docker.internal:8080}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
