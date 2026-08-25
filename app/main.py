@@ -19,6 +19,7 @@ from app.agent.graph import compile_graph
 from app.cache.semantic_cache import get_cached_answer, store_answer
 from app.config import settings
 from app.jwt_utils import extract_customer_id
+from app.observability.tracing import get_langfuse_handler
 from app.retrieval.embeddings import OllamaEmbeddingsClient
 
 
@@ -114,7 +115,11 @@ async def chat(
             yield _sse("done", {})
             return
 
-        config = {"configurable": {"thread_id": body.thread_id}}
+        config: dict[str, object] = {"configurable": {"thread_id": body.thread_id}}
+        langfuse_handler = get_langfuse_handler()
+        if langfuse_handler is not None:
+            config["callbacks"] = [langfuse_handler]
+
         initial_state = {
             "messages": [HumanMessage(body.question)],
             "is_out_of_scope_action": False,
