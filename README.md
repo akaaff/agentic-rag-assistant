@@ -29,7 +29,7 @@ flowchart TB
     subgraph thisrepo["agentic-rag-assistant"]
         fastapi["FastAPI app<br/>POST /chat (SSE)"]
 
-        subgraph graph["LangGraph agent"]
+        subgraph agentgraph["LangGraph agent"]
             scope["scope_check"] --> router
             router -->|needs_retrieval| retrieve
             router -->|needs_tools| tools
@@ -50,10 +50,10 @@ flowchart TB
     webclient -->|"1. login"| gateway
     webclient -->|"2. chat (JWT)"| fastapi
     fastapi -->|cache check| cache
-    fastapi --> graph
+    fastapi --> agentgraph
     retrieve --> pg
     tools -->|"forwards caller's JWT"| gateway
-    graph -.trace.-> langfuse
+    agentgraph -.trace.-> langfuse
     router -.-> ollama
     tools -.-> ollama
     critique -.-> ollama
